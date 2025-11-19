@@ -7,7 +7,7 @@ from legoloop import base
 
 class BatchDesc():
     def batch_size(self, batch):
-        return
+        raise NotImplementedError()
 
 
 class DefaultBatchDesc(BatchDesc):

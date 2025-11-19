@@ -79,3 +79,8 @@ class LastEpoch(base.TrainingPlugin):
         if self.counters.state.current_epoch == self.last_epoch:
             return base.ShouldStop()
         return None
+
+
+class OneEpoch(base.TrainingPlugin):
+    def epoch_end(self):
+        return base.ShouldStop()

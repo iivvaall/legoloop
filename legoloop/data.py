@@ -49,13 +49,13 @@ def _get_loader_param(config, dataset_name, key):
     return eff_config[key]
 
 
-def make_loaders(datasets, loaders_config, shuffle=True):
+def make_loaders(datasets, config, shuffle=True):
     return {
         dataset_name: tdutils.DataLoader(
             dataset,
             shuffle=shuffle,
-            batch_size=_get_loader_param(loaders_config, dataset_name, 'batch_size'),
-            num_workers=_get_loader_param(loaders_config, dataset_name, 'num_workers'),
+            batch_size=_get_loader_param(config, dataset_name, 'batch_size'),
+            num_workers=_get_loader_param(config, dataset_name, 'num_workers'),
             collate_fn=tdutils.default_collate
         )
         for dataset_name, dataset in datasets.items()
