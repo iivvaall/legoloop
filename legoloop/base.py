@@ -1,3 +1,4 @@
+import enum
 import json
 import dataclasses
 from typing import Optional
@@ -31,6 +32,18 @@ class PluginOutput():
 
 class ShouldStop(PluginOutput):
     pass
+
+
+class Stage(enum.StrEnum):
+    epoch_start = enum.auto()
+    epoch = enum.auto()
+    epoch_end = enum.auto()
+    train_start = enum.auto()
+    train = enum.auto()
+    train_end = enum.auto()
+    batch_start = enum.auto()
+    batch = enum.auto()
+    batch_end = enum.auto()
 
 
 class TrainingPlugin():

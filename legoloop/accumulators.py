@@ -74,15 +74,24 @@ class UnionAccumulator(Accumulator):
 
 
 class AccumulatorPlugin(base.TrainingPlugin):
-    def __init__(self, model):
+    def __init__(self, model, when=(base.Stage.epoch_end,)):
         super().__init__()
         self.model = model
         self.accumulator = Accumulator()
+        self.when = when
 
     def _prepare_model(self):
         self.model.eval()
 
     def epoch_end(self):
+        if base.Stage.epoch_end not in self.when:
+            return
+        self._prepare_model()
+        self._accumulate()
+
+    def train_end(self):
+        if base.Stage.train_end not in self.when:
+            return
         self._prepare_model()
         self._accumulate()
 
@@ -104,7 +113,6 @@ class LoopsAcc(AccumulatorPlugin):
             name: self.factory()
             for name in self.loop_iters.keys()
         })
-        self._prepare_model()
         for name, loop_iter in self.loop_iters.items():
             num_samples = 0
             while num_samples < self.samples_limit:
@@ -122,15 +130,11 @@ class LoadersAcc(AccumulatorPlugin):
         self.factory = factory
         self.batch_desc = batch_desc
 
-    def _prepare_model(self):
-        self.model.eval()
-
     def _accumulate(self):
         self.accumulator = CompositeAccumulator(**{
             name: self.factory()
             for name in self.loaders.keys()
         })
-        self._prepare_model()
         for name, loader in self.loaders.items():
             for batch in loader:
                 out = self.feed.validation_feed(batch)
@@ -171,6 +175,8 @@ class AccumulatorMetrics(base.TrainingPlugin):
         }
 
     def save_files(self, folder):
+        if not self.metrics:
+            return
         with open(folder/'metrics.json', 'w') as fh:
             json.dump(self.metrics, fh)
 

@@ -24,10 +24,10 @@ class XorModel(nn.Module):
     def __init__(self):
         super().__init__()
         self.seq = nn.Sequential(
-            nn.Linear(2, 3),
-            nn.BatchNorm1d(),
+            nn.Linear(2, 2),
+            nn.BatchNorm1d(2),
             nn.ReLU(),
-            nn.Linear(3, 2),
+            nn.Linear(2, 2),
         )
 
     def forward(self, batch):
@@ -43,8 +43,8 @@ class IdxModel(nn.Module):
         super().__init__()
         self.linear = nn.Linear(2, 2)
         self.linear.weight.data = torch.tensor([
-            [1.0, 0.0],
-            [0.0, 1.0]
+            [1.0,  0.0],
+            [0.0,  1.0]
         ])
         self.linear.bias.data = torch.tensor([0, 0]).float()
 
@@ -60,11 +60,11 @@ class XorApp(containers.DeclarativeContainer):
     config = providers.Configuration()
     config.from_dict({
         'loaders': {
-            'default': {'batch_size': 3}
+            'default': {'batch_size': 2}
         },
         'num_epochs': 3,
         'epoch_size': 4,
-        'lr': 0.01
+        'lr': 0.1
     })
     data = providers.Container(
         data.Data,
@@ -76,7 +76,7 @@ class XorApp(containers.DeclarativeContainer):
     device = providers.Object('cpu')
     model = providers.Singleton(XorModel)
     opt = providers.Singleton(
-        lambda model, lr: optim.Adam(model.parameters(), lr=lr),
+        lambda model, lr: optim.SGD(model.parameters(), lr=lr),
         model=model,
         lr=config.lr
     )
