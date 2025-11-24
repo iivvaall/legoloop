@@ -43,6 +43,8 @@ class Counter(base.TrainingPlugin):
         epoch_batches: int = 0
         epoch_samples: int  = 0
 
+    state: State
+
     def __init__(self, batch_desc: BatchDesc = DefaultBatchDesc()):
         super().__init__()
         self.batch_desc = batch_desc

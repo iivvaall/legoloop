@@ -104,24 +104,6 @@ class TrainingPlugin():
         pass
 
 
-class EpochCheckpoints(TrainingPlugin):
-
-    @dataclasses.dataclass()
-    class State:
-        checkpoint_epoch_counter: int = 0
-
-    state: State
-
-    def __init__(self, folder):
-        super().__init__()
-        self.folder = folder
-
-    def epoch_end(self):
-        self.state.checkpoint_epoch_counter += 1
-        folder = self.folder/str(self.state.checkpoint_epoch_counter)
-        self.host.save_checkpoint(folder)
-
-
 class TrainingHost():
     def __init__(self, plugins: list[TrainingPlugin]):
         self.plugins = plugins
@@ -161,6 +143,7 @@ class TrainingHost():
         return res
 
     def save_checkpoint(self, folder):
+        folder.mkdir(exist_ok=True, parents=True)
         with open(folder / 'state.json', 'w') as fh:
             json.dump(self.state(), fh, indent=4)
         for plugin in self.plugins:
@@ -171,5 +154,33 @@ class TrainingHost():
             state = json.load(fh)
         for plugin in self.plugins:
             plugin.set_state_from(state)
+        for plugin in self.plugins:
+            plugin.load_files(folder)
 
 
+class EpochCheckpoints(TrainingPlugin):
+
+    @dataclasses.dataclass()
+    class State:
+        checkpoint_number: int = 0
+
+    state: State
+
+    def __init__(self, folder, digits=3):
+        super().__init__()
+        self.folder = folder
+        self.digits = digits
+
+    def _name(self, number):
+        res = str(number)
+        return '0'* (self.digits - len(res)) + res
+
+    def epoch_end(self):
+        self.state.checkpoint_number += 1
+        folder = self.folder/self._name(self.state.checkpoint_number)
+        self.host.save_checkpoint(folder)
+
+    def load(self, number):
+        self.host.load_checkpoint(
+            self.folder/self._name(number)
+        )

@@ -1,4 +1,6 @@
 import numpy as np
+import pandas as pd
+
 from legoloop import accumulators, xor_app
 from legoloop import base, train
 
@@ -29,7 +31,7 @@ def test_union():
     assert acc.result()['arr'].tolist() == [3, 4, 5, 6]
 
 
-def test_loader_acc():
+def test_loader_acc_and_metrics():
     app = xor_app.XorApp(
         model=xor_app.IdxModel()
     )
@@ -49,7 +51,7 @@ def test_loader_acc():
     }
 
 
-def test_loop_acc():
+def test_loop_acc_and_metrics():
     app = xor_app.XorApp(
         model=xor_app.IdxModel()
     )
@@ -67,3 +69,23 @@ def test_loop_acc():
     assert app.loops_metrics().metrics['train'] == {
         'roc_auc': 0.5, 'precision': 1.0, 'recall': 0.5, 'f1': 0.5
     }
+
+
+def test_csv_predicts(tmp_path):
+    app = xor_app.XorApp(
+        model=xor_app.IdxModel(),
+        root=tmp_path
+    )
+    host = base.TrainingHost(
+        plugins=[
+            app.loops_acc(),
+            app.predicts(),
+            app.epoch(),
+            train.OneEpoch()
+        ]
+    )
+    host.run()
+    df = pd.read_csv(tmp_path/'predicts.csv', index_col='idx')
+    df = df.sort_index()
+    assert df['logit0'].to_list() == [0.0, 1.0, 0.0, 1.0]
+    assert sorted(df.columns) == ['logit0', 'logit1']

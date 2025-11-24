@@ -1,4 +1,9 @@
-from torch import nn
+import dataclasses
+from pathlib import Path
+
+import torch
+from torch import optim
+from torch.optim import lr_scheduler
 
 from legoloop import misc, base, utility
 
@@ -67,6 +72,14 @@ class GradientDescent(base.TrainingPlugin):
         loss.mean().backward()
         self.opt.step()
 
+    def save_files(self, folder: Path):
+        torch.save(self.opt.state_dict(), folder / 'opt')
+
+    def load_files(self, folder: Path):
+        self.opt.load_state_dict(
+            torch.load(folder / 'opt')
+        )
+
 
 class LastEpoch(base.TrainingPlugin):
     def __init__(self, counters: utility.Counter, last_epoch):
@@ -84,3 +97,30 @@ class LastEpoch(base.TrainingPlugin):
 class OneEpoch(base.TrainingPlugin):
     def epoch_end(self):
         return base.ShouldStop()
+
+
+class LrSheduler(base.TrainingPlugin):
+    @dataclasses.dataclass
+    class State:
+        sheduler_step: int = 0
+
+    state: State
+
+    def __init__(self, sheduler: lr_scheduler.LRScheduler):
+        super().__init__()
+        self.sheduler = sheduler
+
+    def epoch_end(self):
+        self.state.sheduler_step += 1
+        self.sheduler.step()
+
+    def save_files(self, folder: Path):
+        torch.save(
+            self.sheduler.state_dict(),
+            folder/'lr_sheduler'
+        )
+
+    def load_files(self, folder: Path):
+        self.sheduler.load_state_dict(
+            torch.load(folder / 'lr_sheduler')
+        )

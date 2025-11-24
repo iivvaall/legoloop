@@ -1,9 +1,12 @@
 import torch
 from torch import nn, optim
+from torch.optim import lr_scheduler
 import numpy as np
 from dependency_injector import providers, containers
 
-from legoloop import base, data, utility, train, criteria, accumulators
+from legoloop import (
+    base, data, utility, train, criteria, accumulators, model_ops, board
+)
 
 class XorDataset(data.SizedDataset):
     def __init__(self):
@@ -15,6 +18,7 @@ class XorDataset(data.SizedDataset):
     def __getitem__(self, item):
         f1, f2 = item % 2, (item >> 1) % 2
         return {
+            'idx': f'idx{item}',
             'features': np.array([f1, f2]),
             'target': (f1 + f2) % 2
         }
@@ -57,6 +61,7 @@ class IdxModel(nn.Module):
 
 
 class XorApp(containers.DeclarativeContainer):
+    root = providers.Dependency()
     config = providers.Configuration()
     config.from_dict({
         'loaders': {
@@ -89,8 +94,17 @@ class XorApp(containers.DeclarativeContainer):
         train_iterator=data.loop_iters.provided['train'],
         epoch_size=config.epoch_size,
     )
+
+
+    sheduler = providers.Singleton(
+        lr_scheduler.LambdaLR,
+        optimizer=opt,
+        lr_lambda=lambda epoch: 0.1 / (epoch + 1)
+    )
+    anneal = providers.Singleton(train.LrSheduler, sheduler)
     accumulator = providers.Factory(
         accumulators.CompositeAccumulator,
+        idx=providers.Factory(accumulators.ListAccumulator),
         logits=providers.Factory(accumulators.NumpyAccumulator),
         target=providers.Factory(accumulators.NumpyAccumulator),
         probas=providers.Factory(accumulators.NumpyAccumulator),
@@ -122,6 +136,29 @@ class XorApp(containers.DeclarativeContainer):
         accumulators.AccumulatorMetrics,
         acc_plugin=loops_acc,
         method=providers.Singleton(accumulators.BinaryMetrics)
+    )
+    predicts = providers.Singleton(
+        accumulators.CsvLogits,
+        path=root.provided.joinpath.call('predicts.csv'),
+        acc_plugin=loops_acc,
+        names=['logit0', 'logit1'],
+        acc_key='train',
+        index='idx'
+    )
+    model_weights = providers.Singleton(
+        model_ops.SaveModelWeights,
+        model,
+        path=root.provided.joinpath.call('model'),
+    )
+    checkpoints = providers.Singleton(
+        base.EpochCheckpoints,
+        folder=root.provided.joinpath.call('checkpoints'),
+    )
+    board = providers.Singleton(
+        board.TensorBoard,
+        counter=counter,
+        acc_metrics=loops_metrics,
+        logs_dir=root.provided.joinpath.call('logs'),
     )
     descent = providers.Singleton(train.GradientDescent, model, opt, feed, loss)
     last_epoch = providers.Singleton(train.LastEpoch, counter, config.num_epochs)
