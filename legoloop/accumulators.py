@@ -5,7 +5,7 @@ import numpy as np
 
 from sklearn import metrics
 
-from legoloop import base, utility
+from legoloop import base, utility, train
 
 
 class Accumulator():
@@ -77,7 +77,7 @@ class AccumulatorPlugin(base.TrainingPlugin):
     def __init__(self, model, when=(base.Stage.epoch_end,)):
         super().__init__()
         self.model = model
-        self.accumulator = Accumulator()
+        self.accumulators = {}
         self.when = when
 
     def _prepare_model(self):
@@ -100,8 +100,14 @@ class AccumulatorPlugin(base.TrainingPlugin):
 
 
 class LoopsAcc(AccumulatorPlugin):
-    def __init__(self, model, feed, loop_iters, samples_limit, factory, batch_desc: utility.BatchDesc):
-        super().__init__(model)
+    def __init__(self,
+            model, feed,
+            loop_iters, samples_limit,
+            factory,
+            batch_desc: utility.BatchDesc,
+            when=(base.Stage.epoch_end,)
+        ):
+        super().__init__(model, when)
         self.feed = feed
         self.loop_iters = loop_iters
         self.factory = factory
@@ -109,36 +115,42 @@ class LoopsAcc(AccumulatorPlugin):
         self.batch_desc = batch_desc
 
     def _accumulate(self):
-        self.accumulator = CompositeAccumulator(**{
+        self.accumulators = {
             name: self.factory()
             for name in self.loop_iters.keys()
-        })
+        }
         for name, loop_iter in self.loop_iters.items():
             num_samples = 0
             while num_samples < self.samples_limit:
                 batch = next(loop_iter)
-                out = self.feed.validation_feed(batch)
-                self.accumulator.feed({name: out})
+                model_out = self.feed.validation_feed(batch)
+                self.accumulators[name].feed(model_out)
                 num_samples += self.batch_desc.batch_size(batch)
 
 
 class LoadersAcc(AccumulatorPlugin):
-    def __init__(self, model, feed, loaders, factory, batch_desc: utility.BatchDesc):
-        super().__init__(model)
+    def __init__(
+            self,
+            model, feed,
+            loaders, factory,
+            batch_desc: utility.BatchDesc,
+            when=(base.Stage.epoch_end,)
+        ):
+        super().__init__(model, when)
         self.feed = feed
         self.loaders = loaders
         self.factory = factory
         self.batch_desc = batch_desc
 
     def _accumulate(self):
-        self.accumulator = CompositeAccumulator(**{
+        self.accumulators = {
             name: self.factory()
             for name in self.loaders.keys()
-        })
+        }
         for name, loader in self.loaders.items():
             for batch in loader:
-                out = self.feed.validation_feed(batch)
-                self.accumulator.feed({name: out})
+                model_out = self.feed.validation_feed(batch)
+                self.accumulators[name].feed(model_out)
 
 
 class CsvLogits(base.TrainingPlugin):
@@ -152,7 +164,7 @@ class CsvLogits(base.TrainingPlugin):
         self.path = path
 
     def train_end(self):
-        acc = self.acc_plugin.accumulator.result()[self.acc_key]
+        acc = self.acc_plugin.accumulators[self.acc_key].result()
         df = pd.DataFrame(
             index=pd.Index(acc[self.index], name=self.index),
             data=acc[self.logits],
@@ -170,8 +182,8 @@ class AccumulatorMetrics(base.TrainingPlugin):
 
     def epoch_end(self):
         self.metrics = {
-            name: self.method(data)
-            for name, data in self.acc_plugin.accumulator.result().items()
+            name: self.method(acc.result())
+            for name, acc in self.acc_plugin.accumulators.items()
         }
 
     def save_files(self, folder):

@@ -44,7 +44,7 @@ def test_loader_acc_and_metrics():
         ]
     )
     host.run()
-    out = app.loaders_acc().accumulator.result()['train']
+    out = app.loaders_acc().accumulators['train'].result()
     assert np.isclose(out['features'], out['logits']).all()
     assert app.loaders_metrics().metrics['train'] == {
         'roc_auc': 0.5, 'precision': 1.0, 'recall': 0.5, 'f1': 0.5
@@ -64,7 +64,7 @@ def test_loop_acc_and_metrics():
         ]
     )
     host.run()
-    out = app.loops_acc().accumulator.result()['train']
+    out = app.loops_acc().accumulators['train'].result()
     assert np.isclose(out['features'], out['logits']).all()
     assert app.loops_metrics().metrics['train'] == {
         'roc_auc': 0.5, 'precision': 1.0, 'recall': 0.5, 'f1': 0.5

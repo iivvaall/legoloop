@@ -20,7 +20,7 @@ class TensorBoard(base.TrainingPlugin):
         for key, dct in self.acc_metrics.metrics.items():
             for name, value in dct.items():
                 self.writer.add_scalar(
-                    tag=f'{name}/key',
+                    tag=f'{name}/{key}',
                     scalar_value=float(value),
                     global_step=self.counter.state.global_samples
                 )
