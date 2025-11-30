@@ -2,7 +2,7 @@ from setuptools import setup
 
 
 setup(
-   name='optifleet',
+   name='legoloop',
    version='0.1',
    description='bricks to make a training loop for a neural network',
    packages=['legoloop'],
