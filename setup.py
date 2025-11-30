@@ -1,0 +1,12 @@
+from setuptools import setup
+
+
+setup(
+   name='optifleet',
+   version='0.1',
+   description='bricks to make a training loop for a neural network',
+   packages=['legoloop'],
+   author='aleksey ivanov',
+   author_email='ival.wrk@gmail.com',
+)
+
