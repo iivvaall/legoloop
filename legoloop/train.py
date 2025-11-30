@@ -59,6 +59,9 @@ class GradientDescent(base.TrainingPlugin):
         self.opt = opt
         self.loss = loss
 
+    def train_start(self):
+        self.model.to(self.feed.device)
+
     def epoch_start(self):
         self.model.train()
 
@@ -67,6 +70,7 @@ class GradientDescent(base.TrainingPlugin):
 
     def batch(self, batch):
         self.model.zero_grad()
+        batch = misc.to_device(batch, self.feed.device)
         model_out = self.feed.train_feed(batch)
         loss = self.loss(batch, model_out)
         loss.mean().backward()
