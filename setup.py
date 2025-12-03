@@ -7,6 +7,7 @@ setup(
    description='bricks to make a training loop for a neural network',
    packages=['legoloop'],
    author='aleksey ivanov',
+   license="LGPLv3",
    author_email='ival.wrk@gmail.com',
 )
 
